@@ -5,7 +5,7 @@ concessionada do estado de São Paulo, construído com **Streamlit**, **Pandas**
 **Plotly** e **Folium** a partir dos dados abertos da
 [ARTESP](https://dadosabertos.artesp.sp.gov.br/).
 
-**Demo ao vivo:** <https://painel-de-seguranca-viaria-sp.streamlit.app/>
+**Demo ao vivo:** <https://painel-de-seguranca-viaria-artesp.streamlit.app/>
 
 ---
 

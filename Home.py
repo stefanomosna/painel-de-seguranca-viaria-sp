@@ -181,11 +181,54 @@ with st.sidebar:
         unsafe_allow_html=True,
     )
 
-    @st.cache_data(ttl=3600, show_spinner="Baixando dados da ARTESP...")
+    @st.cache_data(ttl=3600, show_spinner=False)
     def _carregar_dados():
         return load_acidentes(cache=True)
 
-    df_acidentes = _carregar_dados()
+    # No primeiro acesso o painel baixa ~300 MB do portal e pode levar
+    # alguns minutos. Mostramos isso com transparência para o visitante.
+    raw_dir = Path(__file__).parent / "data" / "raw"
+    ja_baixado = len(list(raw_dir.glob("acidentes_*.csv"))) if raw_dir.is_dir() else 0
+    esperado = 26  # arquivos anuais do schema principal (2001-2026)
+
+    if ja_baixado >= esperado:
+        df_acidentes = _carregar_dados()
+    else:
+        status = st.status(
+            "Preparando o painel pela primeira vez…",
+            expanded=True,
+            state="running",
+        )
+        st.markdown(
+            """
+            <div style="font-weight:700; margin-bottom:6px;">Atenção: aguarde o carregamento terminar.</div>
+            <div style="color:var(--text-muted); font-size:.85rem;">
+                No primeiro acesso o painel baixa e processa ~<b>300 MB</b> de dados
+                históricos do portal da ARTESP — isso pode levar <b>3 a 5 minutos</b>.
+                Fique nesta página até o carregamento concluir antes de explorar os
+                outros menus, para que os dados fiquem prontos mais rápido.
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+        progresso = st.progress(0.0, text="Conectando ao portal…")
+
+        def _progresso(pronto, total, msg=None):
+            fracao = min(pronto / max(total, 1), 1.0)
+            label = f"Baixando/processando {msg or 'dados'}… ({pronto}/{total})"
+            progresso.progress(fracao, text=label)
+
+        try:
+            df_acidentes = load_acidentes(cache=True, progress=_progresso)
+        except Exception as exc:
+            status.update(
+                label="Falha ao carregar dados",
+                state="error",
+                expanded=True,
+            )
+            st.error(f"Não foi possível carregar os dados. Erro: {exc}")
+            st.stop()
+        status.update(label="Dados carregados", state="complete", expanded=False)
 
     if df_acidentes.empty:
         st.error("Não foi possível carregar os dados. Verifique a conexão e tente novamente.")

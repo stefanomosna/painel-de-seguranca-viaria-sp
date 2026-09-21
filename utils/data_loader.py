@@ -217,7 +217,11 @@ def _clean_acidentes(df: pd.DataFrame) -> pd.DataFrame:
     return df
 
 
-def load_acidentes(ano: int | None = None, cache: bool = True) -> pd.DataFrame:
+def load_acidentes(
+    ano: int | None = None,
+    cache: bool = True,
+    progress=None,
+) -> pd.DataFrame:
     """
     Carrega dados de acidentes da malha rodoviária estadual (schema principal).
 
@@ -227,6 +231,9 @@ def load_acidentes(ano: int | None = None, cache: bool = True) -> pd.DataFrame:
         Ano específico para filtrar. None retorna todos os anos disponíveis.
     cache : bool
         Se True, baixa e salva CSVs locais para reuso.
+    progress : callable, opcional
+        Callback chamado a cada arquivo processado: progress(pronto, total, msg).
+        Total refere-se aos arquivos anuais esperados.
 
     Retorna
     -------
@@ -240,21 +247,21 @@ def load_acidentes(ano: int | None = None, cache: bool = True) -> pd.DataFrame:
 
     import re
 
+    # Arquivos anuais candidatos (schema principal com coordenadas)
+    candidatos = []
     for res in resources:
         if res["format"] not in ("CSV", "csv"):
             continue
-
-        name = res.get("name", "")
-
-        # Manter apenas arquivos anuais (2001-2026) do schema principal com coords.
-        # Arquivos auxiliares (INFOSIGA, Fumaça/Neblina) são ignorados.
-        m_ano = re.search(r"(\d{4})", name)
+        m_ano = re.search(r"(\d{4})", res.get("name", ""))
         if not m_ano:
             continue
         year = int(m_ano.group(1))
         if ano and year != ano:
             continue
+        candidatos.append((year, res))
+    total = len(candidatos)
 
+    for n, (year, res) in enumerate(candidatos, start=1):
         url = res.get("url") or res.get("download_url")
         if not url:
             continue
@@ -276,6 +283,12 @@ def load_acidentes(ano: int | None = None, cache: bool = True) -> pd.DataFrame:
 
         if not df.empty:
             frames.append(df)
+
+        if progress:
+            try:
+                progress(n, total, f"{fname} processado")
+            except Exception:
+                pass
 
     if not frames:
         return pd.DataFrame()
