@@ -5,7 +5,7 @@ concessionada do estado de São Paulo, construído com **Streamlit**, **Pandas**
 **Plotly** e **Folium** a partir dos dados abertos da
 [ARTESP](https://dadosabertos.artesp.sp.gov.br/).
 
-**Demo ao vivo:** `https://artesp-seguranca-viaria.streamlit.app` *(link a definir após o deploy)*
+**Demo ao vivo:** <https://painel-de-seguranca-viaria-sp.streamlit.app/>
 
 ---
 
@@ -44,7 +44,7 @@ concessionada do estado de São Paulo, construído com **Streamlit**, **Pandas**
 ## Estrutura do projeto
 
 ```
-├── app.py                 # Página principal (visão geral + filtros globais)
+├── Home.py                # Página principal (visão geral + filtros globais)
 ├── pages/
 │   ├── 1_Indicadores.py
 │   ├── 2_Mapa.py
@@ -65,7 +65,7 @@ concessionada do estado de São Paulo, construído com **Streamlit**, **Pandas**
 git clone https://github.com/stefanomosna/painel-de-seguranca-viaria-sp.git
 cd painel-de-seguranca-viaria-sp
 pip install -r requirements.txt
-streamlit run app.py
+streamlit run Home.py
 ```
 
 Os dados são baixados automaticamente da API da ARTESP na primeira execução —

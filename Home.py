@@ -2,7 +2,7 @@
 Painel de Segurança Viária. Rodovias do Estado de São Paulo
 Dashboard BI/GIS baseado em dados abertos da ARTESP.
 
-Executar: streamlit run app.py
+Executar: streamlit run Home.py
 """
 import sys
 from pathlib import Path
