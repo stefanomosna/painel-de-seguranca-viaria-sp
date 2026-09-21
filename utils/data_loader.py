@@ -59,11 +59,14 @@ def _fix_mojibake(raw: bytes) -> str:
 
 def _read_artesp_csv(path: Path | str) -> pd.DataFrame:
     """
-    Lê um CSV da ARTESP com tratamento do formato peculiar:
-    1. Corrige mojibake (double UTF-8)
-    2. Double-parse CSV: cada linha é um campo quotado único cujo conteúdo
-       interno é re-parsado. Isso resolve vírgulas internas com aspa dupla
-       (ex: `""CHOQUE-CERCAS, ALAMBRADOS, MOURÃO""`) sem truncar campos.
+    Lê um CSV da ARTESP suportando os dois formatos publicados pelo portal:
+
+    1. Formato legado: cada linha inteira envolta em aspas duplas e texto
+       duplamente codificado em UTF-8 (mojibake).
+    2. Formato atual: CSV padrão em UTF-8 (sem envelope e sem mojibake).
+
+    A detecção é automática, linha a linha: se a interpretação simples do CSV
+    devolver um único campo que contém vírgulas, é o formato legado (re-parse).
     """
     path = Path(path)
     with open(path, "rb") as fh:
@@ -75,13 +78,12 @@ def _read_artesp_csv(path: Path | str) -> pd.DataFrame:
     text = _fix_mojibake(raw)
 
     def _parse_line(line: str) -> list:
-        # Passada 1: linha inteira é wrap por aspas duplas -> 1 campo único
-        try:
-            inner = next(csv.reader([line], delimiter=",", quotechar='"', doublequote=True))[0]
-        except (IndexError, StopIteration):
-            inner = line.strip('"')
-        # Passada 2: re-parsar o conteúdo interno em campos reais
-        return next(csv.reader([inner], delimiter=",", quotechar='"', doublequote=True))
+        # Passada 1: CSV simples
+        outer = next(csv.reader([line], delimiter=",", quotechar='"', doublequote=True))
+        # Formato legado: a linha inteira era 1 campo quotado contendo o CSV interno
+        if len(outer) == 1 and "," in outer[0]:
+            return next(csv.reader([outer[0]], delimiter=",", quotechar='"', doublequote=True))
+        return outer
 
     rows = []
     for line in text.splitlines():
@@ -109,8 +111,15 @@ def _clean_acidentes(df: pd.DataFrame) -> pd.DataFrame:
     """Padroniza nomes de colunas, tipos e deriva variáveis temporais."""
     df = df.copy()
 
-    # Normalizar nomes de colunas
-    col_map = {c: c.strip().upper().replace(" ", "_") for c in df.columns}
+    # Normalizar nomes de colunas (remove acentos para robustez a variações do portal)
+    import unicodedata
+
+    def _deaccent(s: str) -> str:
+        return "".join(
+            ch for ch in unicodedata.normalize("NFD", s) if unicodedata.category(ch) != "Mn"
+        )
+
+    col_map = {c: _deaccent(c.strip().upper().replace(" ", "_")) for c in df.columns}
     df = df.rename(columns=col_map)
 
     # Eliminar coluna sem nome (artefatos de parsing)
@@ -253,13 +262,17 @@ def load_acidentes(ano: int | None = None, cache: bool = True) -> pd.DataFrame:
         fname = f"acidentes_{year}.csv"
         fpath = cache_dir / fname
 
-        if cache and fpath.exists():
-            df = _read_artesp_csv(fpath)
-        else:
-            resp = requests.get(url, timeout=120)
-            resp.raise_for_status()
-            fpath.write_bytes(resp.content)
-            df = _read_artesp_csv(fpath)
+        try:
+            if cache and fpath.exists():
+                df = _read_artesp_csv(fpath)
+            else:
+                resp = requests.get(url, timeout=120)
+                resp.raise_for_status()
+                fpath.write_bytes(resp.content)
+                df = _read_artesp_csv(fpath)
+        except Exception:
+            # Um arquivo com falha de download não pode derrubar o app todo
+            continue
 
         if not df.empty:
             frames.append(df)
