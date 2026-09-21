@@ -1,0 +1,25 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+env/
+IPython Notebook Checkpoints
+
+# Dados brutos e processados (o app baixa automaticamente do portal ARTESP)
+data/raw/
+data/processed/
+
+# Scripts de depuração local (não fazem parte do app)
+/check_*.py
+/test_*.py
+/inspect_data.py
+
+# Streamlit / env
+.streamlit/secrets.toml
+.env
+
+# Sistema
+.DS_Store
+Thumbs.db
