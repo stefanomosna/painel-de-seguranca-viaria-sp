@@ -6,7 +6,4 @@ folium>=0.15.0
 streamlit-folium>=0.18.0
 geopandas>=0.14.0
 requests>=2.31.0
-kml2geojson>=5.0.0
-simplekml>=1.4.5
 openpyxl>=3.1.0
-branca>=0.7.0
